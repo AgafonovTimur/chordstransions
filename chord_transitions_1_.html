@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Переходы аккордов</title>
+<style>
+
+:root{
+  --ink:#231f20;
+  --paper:#ffffff;
+  --track:var(--ink);
+  --red:rgba(255,48,48,.855);
+  --yellow:rgba(255,221,87,.855);
+  --cyan:rgba(91,225,229,.855);
+  --red-solid:#ff4e4e;
+  --yellow-solid:#ffe26f;
+  --cyan-solid:#73e5e9;
+  --tick:#8d8a8a;
+  --hover:#f1efef;
+  --picker-bg:rgba(255,255,255,.97);
+  --serif:'Label Serif', 'EB Garamond', Garamond, 'Times New Roman', serif;
+  --slab:'Title Slab', 'Roboto Slab', Rockwell, Georgia, serif;
+}
+html[data-theme="dark"]{
+  --ink:#d0d0d0;
+  --paper:#1e1e1e;
+  --track:#2f2f2f;
+  --tick:#9a9797;
+  --hover:#2b2b2e;
+  --picker-bg:rgba(30,30,30,.97);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--serif);
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .2s ease, color .2s ease;
+}
+.stage{
+  min-height:100%;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:start;
+  gap:8px;
+  padding:12px 20px 12px 12px;
+}
+.diagram{
+  display:flex;
+  justify-content:center;
+  min-width:0;
+}
+#map{
+  display:block;
+  width:100%;
+  height:auto;
+  max-height:calc(100vh - 24px);
+  overflow:visible;
+  user-select:none;
+  -webkit-user-select:none;
+}
+.panel{
+  position:sticky;
+  top:12px;
+  display:flex;
+  flex-direction:column;
+  gap:14px;
+  padding-top:12px;
+}
+.seg{
+  display:flex;
+  gap:6px;
+}
+.seg button{
+  flex:1 1 0;
+  min-width:104px;
+  font:500 18px/1 var(--serif);
+  color:var(--ink);
+  background:var(--paper);
+  border:1.5px solid var(--ink);
+  border-radius:999px;
+  padding:9px 14px 10px;
+  cursor:pointer;
+  transition:background-color .15s, color .15s;
+}
+.seg button:hover{background:var(--hover)}
+.seg button[aria-pressed="true"]{
+  background:var(--ink);
+  color:var(--paper);
+}
+.seg button:focus-visible{
+  outline:3px solid var(--cyan-solid);
+  outline-offset:2px;
+}
+
+/* ---- SVG ---- */
+.track-base{fill:none;stroke:var(--track);stroke-width:13;stroke-linecap:round;stroke-linejoin:round}
+.track-ticks{fill:none;stroke:var(--tick);stroke-width:5;stroke-dasharray:1 13;opacity:.75}
+.arrow{fill:none;stroke:var(--ink);stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
+.lbl{font-family:var(--serif);font-size:16px;fill:var(--ink)}
+.node-text{font-family:var(--serif);font-weight:500;fill:#000;text-anchor:middle;dominant-baseline:central}
+.loop-title{font-family:var(--slab);font-weight:700;font-size:40px;text-anchor:middle}
+.loop-title .outer{fill:var(--ink);stroke:var(--ink);stroke-width:7;stroke-linejoin:round}
+.loop-title .inner{fill:var(--ink);stroke:var(--paper);stroke-width:1.6;stroke-linejoin:round}
+
+#center{cursor:pointer;outline:none}
+#center .halo{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-dasharray:3 4;opacity:0;transition:opacity .15s}
+#center:hover .halo,#center:focus-visible .halo,#center.open .halo{opacity:.8}
+
+#picker{opacity:0;pointer-events:none;transition:opacity .15s}
+#picker.open{opacity:1;pointer-events:auto}
+#picker .backdrop{fill:var(--picker-bg);stroke:var(--ink);stroke-width:1.5}
+.key{cursor:pointer;outline:none}
+.key circle{fill:var(--paper);stroke:var(--ink);stroke-width:1.5;transition:fill .12s}
+.key text{font-family:var(--serif);font-weight:500;font-size:19px;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
+.key:hover circle{fill:var(--hover)}
+.key:focus-visible circle{stroke-width:3}
+.key.current circle{fill:var(--cyan-solid)}
+.key.current text{fill:#000}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important}
+}
+@media (max-width:760px){
+  .stage{display:flex;flex-direction:column;align-items:stretch;min-height:0;padding:10px;gap:4px}
+  .panel{position:static;order:-1;gap:8px;padding-top:0}
+  .seg button{min-width:0;font-size:16px;padding:8px 10px 9px}
+  #map{max-height:none}
+}
+</style>
+</head>
+<body>
+<main class="stage">
+  <div class="diagram">
+    <svg id="map" viewBox="-40 -6 1015 926" xmlns="http://www.w3.org/2000/svg" role="img">
+      <g id="layer-tracks"></g>
+      <g id="layer-arrows"></g>
+      <g id="layer-labels"></g>
+      <g id="layer-titles"></g>
+      <g id="layer-nodes"></g>
+      <g id="picker"></g>
+      <g id="center" role="button" tabindex="0"></g>
+    </svg>
+  </div>
+  <aside class="panel">
+    <div class="seg" id="lang-seg">
+      <button type="button" data-lang="ru"></button>
+      <button type="button" data-lang="en"></button>
+    </div>
+    <div class="seg" id="show-seg">
+      <button type="button" data-show="notes"></button>
+      <button type="button" data-show="degrees"></button>
+    </div>
+    <div class="seg" id="theme-seg">
+      <button type="button" data-thm="light"></button>
+      <button type="button" data-thm="dark"></button>
+    </div>
+  </aside>
+</main>
+
+<script>
+(function(){
+'use strict';
+
+/* ================== Текст интерфейса ================== */
+var UI = {
+  ru:{ru:'Русский',en:'Английский',notes:'Ноты',degrees:'Ступени',
+      light:'Светлая',dark:'Тёмная',
+      pick:'Выбрать тональность',title:'Переходы аккордов',
+      langGroup:'Язык',showGroup:'Что показывать',themeGroup:'Тема',
+      map:'Схема переходов между аккордами тональности'},
+  en:{ru:'Russian',en:'English',notes:'Notes',degrees:'Degrees',
+      light:'Light',dark:'Dark',
+      pick:'Choose key',title:'Chord transitions',
+      langGroup:'Language',showGroup:'What to show',themeGroup:'Theme',
+      map:'Map of transitions between the chords of a key'}
+};
+
+/* ================== Теория ================== */
+var KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
+var LETTERS = 'CDEFGAB';
+var NAT = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
+var STEPS = [0,2,4,5,7,9,11];
+var QUAL  = ['','m','m','','','m','°'];
+var ROMAN = ['I','ii','iii','IV','V','vi','vii°'];
+
+function scaleOf(key){
+  var L = key[0], a = key.slice(1);
+  var acc = a==='#'?1 : a==='b'?-1 : 0;
+  var root = (NAT[L]+acc+12)%12;
+  var li = LETTERS.indexOf(L);
+  return STEPS.map(function(s,i){
+    var letter = LETTERS[(li+i)%7];
+    var diff = (((root+s)%12 - NAT[letter])%12+12)%12;
+    if(diff>6) diff -= 12;
+    var sign = diff===1?'#':diff===2?'##':diff===-1?'b':diff===-2?'bb':'';
+    return letter+sign;
+  });
+}
+
+/* ================== Схема ==================
+   deg: ступени (0 = I … 6 = vii°) по порядку обхода петли, от центра и обратно.
+   pts: координаты узлов; way: промежуточные точки изгиба дорожки (после узла с этим номером).
+   fwd: подписи для движения по петле «вперёд» (стрелка снаружи петли),
+   rev: подписи для движения «назад» (стрелка внутри петли). */
+var C0 = [470,462];
+var LOOPS = [
+  { color:'red', title:{ru:'Терции',en:'3rds'}, titleAt:[300,44],
+    deg:[0,2,4,6,1,3,5,0],
+    pts:[C0,[379,343],[370,219],[404,101],[532,101],[564,220],[556,344],C0],
+    way:{0:[[418,440]],3:[[466,58]],6:[[522,440]]},
+    t0:[-1,-0.12], t1:[-1,0.12],
+    fwd:{
+      en:['Loneliness','Strength,\nHappy surprise','Thickening,\nAdded tension','Negative surprise','Help, sweetness,\nMagnificence','Hardship','Pure positive'],
+      ru:['Одиночество','Сила,\nрадостный сюрприз','Сгущение,\nрост напряжения','Неприятный сюрприз','Помощь, нежность,\nвеличие','Тяготы','Чистый позитив']},
+    rev:{
+      en:['Soft\nreturn','Bad news,\nLeft hanging','Release','Uncertainty','Darkening','Redemption,\nSupport','Pure\nnegative'],
+      ru:['Мягкое\nвозвращение','Плохие новости,\nнедосказанность','Разрядка','Сомнение','Помрачнение','Искупление,\nподдержка','Чистый\nнегатив']}
+  },
+  { color:'yellow', title:{ru:'Кварты',en:'4ths'}, titleAt:[170,848],
+    deg:[0,3,6,2,5,1,4,0],
+    pts:[C0,[328,459],[220,525],[143,630],[183,737],[322,692],[410,607],C0],
+    way:{0:[[418,448]],3:[[132,690]],6:[[462,528]]},
+    t0:[-1,-0.12], t1:[0,-1],
+    fwd:{
+      en:['Exploration,\nWarmth','Drama,\nTension,\nAlarm','Despair,\nAnger','Sad resolution,\nAcceptance','Hope,\nOpening up','Happy\nclarification','Bright\nresolution'],
+      ru:['Исследование,\nтеплота','Драма,\nнапряжение,\nтревога','Отчаяние,\nгнев','Грустное\nразрешение,\nпринятие','Надежда,\nраскрытие','Радостное\nпрояснение','Светлое\nразрешение']},
+    rev:{
+      en:['Bright peace','Mystery,\nMagic','Unknown,\nComplexity','Gravitas,\nEpicness','Closedness,\nShyness','Setback','Optimism\nEnergy'],
+      ru:['Светлый\nпокой','Тайна,\nволшебство','Неизвестность,\nсложность','Весомость,\nэпичность','Замкнутость,\nробость','Шаг назад','Оптимизм,\nэнергия']}
+  },
+  { color:'cyan', title:{ru:'Секунды',en:'2nds'}, titleAt:[790,852],
+    deg:[0,1,2,3,4,5,6,0],
+    pts:[C0,[617,459],[727,528],[798,639],[746,737],[625,693],[523,610],C0],
+    way:{0:[[522,448]],3:[[805,688]],6:[[476,530]]},
+    t0:[1,-0.12], t1:[0,-1],
+    fwd:{
+      en:['Resignation','Heightened\ndramatic intensity','Overcoming,\nSolace','Heightened\njoy','Disappointment','Pain,\nconfusion',''],
+      ru:['Смирение','Нарастание\nдраматизма','Преодоление,\nутешение','Нарастающая\nрадость','Разочарование','Боль,\nсмятение','']},
+    rev:{
+      en:['Clouded peace','Faltering','Loss,\nFragility','Calm','Positive\ntransformation','Dark resolution','Destabi-\nlisation'],
+      ru:['Омрачённый\nпокой','Колебание','Утрата,\nхрупкость','Спокойствие','Позитивная\nперемена','Тёмное\nразрешение','Дестаби-\nлизация']}
+  }
+];
+
+/* Положение подписей: 'петля:f|r:участок' -> [x, y, по горизонтали, по вертикали]
+   по горизонтали: l — левый край блока в точке x, r — правый край, c — центр;
+   по вертикали:   t — верх блока в точке y, b — низ, m — середина.
+   LBL_RU — отдельные положения для русского там, где длинный текст не помещается. */
+var LBL = {
+  '0:f:0':[363,376,'r','m'], '0:r:0':[425,371,'l','t'], /* C -> Em и C -> Am */
+  '0:f:1':[340,281,'r','m'], '0:r:1':[393,297,'l','m'],
+  '0:f:2':[350,144,'r','m'], '0:r:2':[405,184,'l','m'],
+  '0:f:3':[465,30,'c','b'],  '0:r:3':[463,102,'c','m'],
+  '0:f:4':[580,159,'l','m'], '0:r:4':[530,155,'r','m'],
+  '0:f:5':[597,289,'l','m'], '0:r:5':[550,257,'r','m'],
+  '0:f:6':[570,387,'l','m'], '0:r:6':[517,362,'r','m'],
+
+  '1:f:0':[370,419,'r','m'], '1:r:0':[392,475,'c','t'],
+  '1:f:1':[259,453,'r','m'], '1:r:1':[257,527,'l','m'],
+  '1:f:2':[163,555,'r','m'], '1:r:2':[197,603,'l','m'],
+  '1:f:3':[108,712,'r','m'], '1:r:3':[152,677,'l','m'],
+  '1:f:4':[262,757,'c','t'], '1:r:4':[258,697,'c','b'],
+  '1:f:5':[377,695,'l','m'], '1:r:5':[362,627,'r','m'],
+  '1:f:6':[468,587,'c','t'], '1:r:6':[433,533,'r','m'],
+
+  '2:f:0':[578,431,'l','b'], '2:r:0':[550,475,'c','t'],
+  '2:f:1':[704,468,'l','m'], '2:r:1':[666,525,'r','m'],
+  '2:f:2':[790,585,'l','m'], '2:r:2':[740,594,'r','m'],
+  '2:f:3':[816,746,'l','m'], '2:r:3':[782,688,'r','m'],
+  '2:f:4':[642,756,'c','t'], '2:r:4':[706,668,'c','m'],
+  '2:f:5':[568,686,'r','m'], '2:r:5':[552,612,'l','m'],
+  '2:r:6':[507,537,'l','m']
+};
+var LBL_RU = {
+  '0:r:0':[425,377,'l','t'],
+  '1:r:0':[388,475,'c','t'],
+  '1:r:4':[265,687,'c','b'],
+  '1:f:6':[464,607,'c','t'],
+  '2:f:1':[712,466,'l','m'],
+  '2:r:0':[550,475,'c','t'],
+  '2:r:3':[797,694,'r','m'],
+  '2:r:4':[694,660,'c','m']
+};
+/* В режиме «ступень – нота» узлы шире, часть подписей отодвигается */
+var LBL_WIDE = {
+  '0:r:2':[410,196,'l','m'],
+  '0:r:3':[466,129,'c','t'],
+  '0:r:4':[530,172,'r','m'],
+  '0:r:6':[514,362,'r','m'],
+  '1:r:0':[378,484,'c','t'],
+  '1:r:4':[250,668,'c','b'],
+  '1:f:6':[468,636,'c','t'],
+  '2:r:0':[570,484,'c','t'],
+  '2:r:4':[708,655,'c','m'],
+  '2:r:5':[576,612,'l','m']
+};
+var LBL_WIDE_RU = {
+  '1:r:0':[388,475,'c','t']
+};
+/* Положение стрелок на участке между узлами (0 — у первого узла, 1 — у второго) */
+var FRAC = {'0:0':0.68,'0:6':0.4,'1:0':0.62,'1:6':0.45,'2:0':0.5,'2:6':0.5};
+
+/* ================== Состояние ================== */
+var state = { key:'C', lang:'ru', notes:true, degrees:false, open:false, theme:'dark' };
+document.documentElement.setAttribute('data-theme',state.theme);
+
+/* ================== Геометрия ================== */
+var NS = 'http://www.w3.org/2000/svg';
+function el(tag, attrs, parent){
+  var e = document.createElementNS(NS, tag);
+  for(var k in attrs) e.setAttribute(k, attrs[k]);
+  if(parent) parent.appendChild(e);
+  return e;
+}
+function sub(a,b){return [a[0]-b[0],a[1]-b[1]]}
+function add(a,b){return [a[0]+b[0],a[1]+b[1]]}
+function mul(a,k){return [a[0]*k,a[1]*k]}
+function len(a){return Math.hypot(a[0],a[1])}
+function norm(a){var l=len(a)||1;return [a[0]/l,a[1]/l]}
+
+/* Строит гладкую дорожку через точки (кубические кривые Катмулла-Рома) */
+function buildLoop(loop){
+  var P = [], isNode = [];
+  loop.pts.forEach(function(p,i){
+    P.push(p); isNode.push(true);
+    (loop.way[i]||[]).forEach(function(w){ P.push(w); isNode.push(false); });
+  });
+  var n = P.length, T = [];
+  for(var i=0;i<n;i++){
+    if(i===0){ T.push(mul(norm(loop.t0), len(sub(P[1],P[0]))*1.0)); }
+    else if(i===n-1){ T.push(mul(norm(loop.t1), len(sub(P[n-1],P[n-2]))*1.0)); }
+    else{ T.push(mul(sub(P[i+1],P[i-1]),0.5)); }
+  }
+  var segs = [], d = 'M'+P[0][0]+','+P[0][1];
+  for(var j=0;j<n-1;j++){
+    var a=P[j], b=P[j+1];
+    var c1=add(a,mul(T[j],1/3)), c2=sub(b,mul(T[j+1],1/3));
+    segs.push([a,c1,c2,b]);
+    d += ' C'+c1.map(f1)+' '+c2.map(f1)+' '+b.map(f1);
+  }
+  /* Выборка точек вдоль дорожки и отметки, где находятся узлы */
+  var poly = [], nodeIdx = [0];
+  segs.forEach(function(s,si){
+    for(var k=(si===0?0:1);k<=40;k++){
+      var t=k/40, u=1-t;
+      var x=u*u*u*s[0][0]+3*u*u*t*s[1][0]+3*u*t*t*s[2][0]+t*t*t*s[3][0];
+      var y=u*u*u*s[0][1]+3*u*u*t*s[1][1]+3*u*t*t*s[2][1]+t*t*t*s[3][1];
+      poly.push([x,y]);
+    }
+    if(isNode[si+1]) nodeIdx.push(poly.length-1);
+  });
+  var cum=[0];
+  for(var q=1;q<poly.length;q++) cum.push(cum[q-1]+len(sub(poly[q],poly[q-1])));
+  /* Ориентация петли: какая сторона наружу */
+  var area=0;
+  for(var r=0;r<poly.length-1;r++) area += poly[r][0]*poly[r+1][1]-poly[r+1][0]*poly[r][1];
+  return {d:d, poly:poly, cum:cum, nodeIdx:nodeIdx, sign: area>0?1:-1};
+}
+function f1(v){return Math.round(v*10)/10}
+
+/* Точка и касательная на дорожке по расстоянию от начала */
+function at(g, s){
+  var c=g.cum, lo=0, hi=c.length-1;
+  while(hi-lo>1){ var mid=(lo+hi)>>1; if(c[mid]<s) lo=mid; else hi=mid; }
+  var seg=c[hi]-c[lo]||1, t=(s-c[lo])/seg;
+  var p=add(g.poly[lo],mul(sub(g.poly[hi],g.poly[lo]),t));
+  var tg=norm(sub(g.poly[hi],g.poly[lo]));
+  return {p:p,t:tg};
+}
+
+var ARROW_OFF = 18, ARROW_LEN = 60, CLEAR = 30, LABEL_GAP = 7;
+
+function arrowPath(g, s0, s1, side, forward){
+  var pts=[], N=14;
+  for(var i=0;i<=N;i++){
+    var s = s0+(s1-s0)*i/N, a=at(g,s);
+    var nrm=[a.t[1]*g.sign*side, -a.t[0]*g.sign*side];
+    pts.push(add(a.p, mul(nrm, ARROW_OFF)));
+  }
+  if(!forward) pts.reverse();
+  var d='M'+pts.map(function(p){return p.map(f1).join(',')}).join(' L');
+  var end=pts[pts.length-1], dir=norm(sub(end,pts[pts.length-3]));
+  var h=8, w=0.5;
+  var back=mul(dir,-h), left=[back[0]*Math.cos(w)-back[1]*Math.sin(w), back[0]*Math.sin(w)+back[1]*Math.cos(w)];
+  var right=[back[0]*Math.cos(-w)-back[1]*Math.sin(-w), back[0]*Math.sin(-w)+back[1]*Math.cos(-w)];
+  d += ' M'+add(end,left).map(f1)+' L'+end.map(f1)+' L'+add(end,right).map(f1);
+  return {d:d, mid:pts[Math.floor(pts.length/2)]};
+}
+
+/* ================== Отрисовка ================== */
+var svg = document.getElementById('map');
+var L = {
+  tracks:document.getElementById('layer-tracks'),
+  arrows:document.getElementById('layer-arrows'),
+  labels:document.getElementById('layer-labels'),
+  titles:document.getElementById('layer-titles'),
+  nodes:document.getElementById('layer-nodes'),
+  picker:document.getElementById('picker'),
+  center:document.getElementById('center')
+};
+var GEO = LOOPS.map(buildLoop);
+
+function drawStatic(){
+  GEO.forEach(function(g){
+    el('path',{d:g.d,'class':'track-base'},L.tracks);
+  });
+  GEO.forEach(function(g){
+    el('path',{d:g.d,'class':'track-ticks'},L.tracks);
+  });
+  /* стрелки */
+  GEO.forEach(function(g,li){
+    g.arrows=[];
+    for(var k=0;k<g.nodeIdx.length-1;k++){
+      var sA=g.cum[g.nodeIdx[k]], sB=g.cum[g.nodeIdx[k+1]];
+      var fr=FRAC[li+':'+k]||0.5;
+      var half=Math.min(ARROW_LEN,(sB-sA)-2*CLEAR)/2;
+      var mid=Math.max(sA+CLEAR+half, Math.min(sB-CLEAR-half, sA+(sB-sA)*fr));
+      var f=arrowPath(g,mid-half,mid+half, 1,true);
+      var r=arrowPath(g,mid-half,mid+half,-1,false);
+      el('path',{d:f.d,'class':'arrow'},L.arrows);
+      el('path',{d:r.d,'class':'arrow'},L.arrows);
+      var tg=at(g,mid).t;
+      var out=[tg[1]*g.sign,-tg[0]*g.sign];
+      g.arrows.push({f:f.mid, r:r.mid, out:out});
+    }
+  });
+}
+
+function placeLabel(text, key){
+  var wide = wideNow;
+  var spec = (wide && state.lang==='ru' && LBL_WIDE_RU[key]) || (wide && LBL_WIDE[key]) || (state.lang==='ru' && LBL_RU[key]) || LBL[key];
+  if(!spec) return;
+  var lines = text.split('\n');
+  var t = el('text',{'class':'lbl','text-anchor':'middle'},L.labels);
+  lines.forEach(function(line,i){
+    var ts = el('tspan',{x:0,dy:i===0?'0':'1.08em'},t);
+    ts.textContent=line;
+  });
+  var bb=t.getBBox();
+  var x=spec[0], y=spec[1];
+  var cx = spec[2]==='l' ? x+bb.width/2 : spec[2]==='r' ? x-bb.width/2 : x;
+  var top = spec[3]==='t' ? y : spec[3]==='b' ? y-bb.height : y-bb.height/2;
+  t.setAttribute('transform','translate('+f1(cx)+','+f1(top-bb.y)+')');
+  return t;
+}
+
+function chordText(deg){
+  var sc = scaleOf(state.key);
+  var name = sc[deg]+QUAL[deg];
+  if(state.notes && state.degrees) return ROMAN[deg]+' \u2013 '+name;
+  if(state.degrees) return ROMAN[deg];
+  return name;
+}
+
+function pill(parent, cx, cy, text, fill, fontSize){
+  var g = el('g',{},parent);
+  var r = el('rect',{},g);
+  var t = el('text',{x:cx,y:cy+1,'class':'node-text','font-size':fontSize},g);
+  t.textContent = text;
+  var w = t.getComputedTextLength ? t.getComputedTextLength() : text.length*fontSize*.5;
+  var h = 46, W = Math.max(28, w+17);
+  r.setAttribute('x',f1(cx-W/2)); r.setAttribute('y',cy-h/2);
+  r.setAttribute('width',f1(W)); r.setAttribute('height',h);
+  r.setAttribute('rx',Math.min(W,h)/2);
+  r.setAttribute('fill',fill);
+  return {g:g,w:W,h:h};
+}
+
+var COLORS = {red:'var(--red)',yellow:'var(--yellow)',cyan:'var(--cyan)'};
+
+function nodeFont(){ return (state.notes && state.degrees) ? 20 : 31; }
+
+var wideNow = false;
+/* Узлы стали заметно шире обычных «Dm», «Em»? Тогда подписи рядом с ними отодвигаются. */
+function measureWide(fs){
+  if(state.notes && state.degrees) return true;
+  var probe = el('text',{'class':'node-text','font-size':fs},L.nodes);
+  probe.textContent='Dm';
+  var base = probe.getComputedTextLength(), max = 0;
+  for(var d=0; d<7; d++){
+    probe.textContent = chordText(d);
+    max = Math.max(max, probe.getComputedTextLength());
+  }
+  L.nodes.removeChild(probe);
+  return max > base + 3;
+}
+
+function drawDynamic(){
+  var lang = state.lang, fs = nodeFont();
+  L.labels.textContent=''; L.titles.textContent=''; L.nodes.textContent=''; L.center.textContent='';
+  wideNow = measureWide(fs);
+
+  /* подписи переходов */
+  GEO.forEach(function(g,li){
+    var loop=LOOPS[li];
+    g.arrows.forEach(function(a,k){
+      var ft=loop.fwd[lang][k], rt=loop.rev[lang][k];
+      if(ft) placeLabel(ft, li+':f:'+k);
+      if(rt) placeLabel(rt, li+':r:'+k);
+    });
+  });
+  /* подпись «Bright resolution» общая для V → I и vii° → I, она хранится у петли кварт */
+
+  /* названия петель */
+  LOOPS.forEach(function(loop){
+    var g = el('g',{'class':'loop-title',transform:'translate('+loop.titleAt+')'},L.titles);
+    var o = el('text',{'class':'outer'},g); o.textContent=loop.title[lang];
+    var i = el('text',{'class':'inner'},g); i.textContent=loop.title[lang];
+  });
+
+  /* узлы */
+  LOOPS.forEach(function(loop){
+    for(var k=1;k<loop.pts.length-1;k++){
+      pill(L.nodes, loop.pts[k][0], loop.pts[k][1], chordText(loop.deg[k]), COLORS[loop.color], fs);
+    }
+  });
+
+  /* центр */
+  drawCenter(fs);
+  drawPicker();
+  applyUI();
+}
+
+function drawCenter(fs){
+  var c=C0, g=L.center;
+  var txt = chordText(0);
+  var probe = el('text',{'class':'node-text','font-size':fs},g); probe.textContent=txt;
+  var w = probe.getComputedTextLength(); g.removeChild(probe);
+  var W = Math.max(32, w+16), H = 57;
+  function rr(wd,ht,fill){ el('rect',{x:f1(c[0]-wd/2),y:f1(c[1]-ht/2),width:f1(wd),height:f1(ht),rx:f1(Math.min(wd,ht)/2),fill:fill},g); }
+  rr(W+28,H+20,'rgba(255,255,255,0.001)');           // увеличенная зона нажатия
+  el('rect',{'class':'halo',x:f1(c[0]-(W+30)/2),y:f1(c[1]-(H+22)/2),width:f1(W+30),height:f1(H+22),rx:f1(Math.min(W+30,H+22)/2)},g);
+  rr(W+20,H+10,'var(--yellow)');
+  rr(W+10,H+6,'var(--red-solid)');
+  rr(W,H,'var(--cyan)');
+  var t=el('text',{x:c[0],y:c[1]+1,'class':'node-text','font-size':fs+6},g); t.textContent=txt;
+  var tt=el('title',{},g); tt.textContent=UI[state.lang].pick;
+  g.classList.toggle('open',state.open);
+  g.setAttribute('aria-label',UI[state.lang].pick+': '+state.key);
+  g.setAttribute('aria-expanded',state.open?'true':'false');
+}
+
+function drawPicker(){
+  var p=L.picker; p.textContent='';
+  var c=C0, R=84;
+  el('circle',{'class':'backdrop',cx:c[0],cy:c[1],r:R+27},p);
+  KEYS.forEach(function(k,i){
+    var ang = -Math.PI/2 + i*Math.PI*2/12;
+    var x=c[0]+R*Math.cos(ang), y=c[1]+R*Math.sin(ang);
+    var g=el('g',{'class':'key'+(k===state.key?' current':''),role:'button',tabindex:state.open?'0':'-1','data-key':k,'aria-label':k},p);
+    el('circle',{cx:f1(x),cy:f1(y),r:21},g);
+    var t=el('text',{x:f1(x),y:f1(y+1)},g); t.textContent=k;
+  });
+  p.classList.toggle('open',state.open);
+  p.setAttribute('aria-hidden',state.open?'false':'true');
+}
+
+function applyUI(){
+  var u=UI[state.lang];
+  document.documentElement.lang=state.lang;
+  document.title=u.title;
+  svg.setAttribute('aria-label',u.map);
+  document.getElementById('lang-seg').setAttribute('aria-label',u.langGroup);
+  document.getElementById('show-seg').setAttribute('aria-label',u.showGroup);
+  document.getElementById('theme-seg').setAttribute('aria-label',u.themeGroup);
+  document.querySelectorAll('[data-lang]').forEach(function(b){
+    b.textContent=u[b.dataset.lang];
+    b.setAttribute('aria-pressed',b.dataset.lang===state.lang?'true':'false');
+  });
+  document.querySelectorAll('[data-show]').forEach(function(b){
+    b.textContent=u[b.dataset.show];
+    b.setAttribute('aria-pressed',state[b.dataset.show]?'true':'false');
+  });
+  document.querySelectorAll('[data-thm]').forEach(function(b){
+    b.textContent=u[b.dataset.thm];
+    b.setAttribute('aria-pressed',b.dataset.thm===state.theme?'true':'false');
+  });
+}
+
+/* ================== Управление ================== */
+function setOpen(v){
+  state.open=v;
+  L.center.textContent=''; drawCenter(nodeFont());
+  drawPicker();
+  if(v){ var cur=L.picker.querySelector('.current'); if(cur) cur.focus(); }
+}
+
+L.center.addEventListener('click',function(e){ e.stopPropagation(); setOpen(!state.open); });
+L.center.addEventListener('keydown',function(e){
+  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setOpen(!state.open); }
+});
+L.picker.addEventListener('click',function(e){
+  var k=e.target.closest('.key'); if(!k) return;
+  e.stopPropagation();
+  state.key=k.getAttribute('data-key'); state.open=false;
+  drawDynamic(); L.center.focus();
+});
+L.picker.addEventListener('keydown',function(e){
+  var k=e.target.closest('.key'); if(!k) return;
+  var keys=[].slice.call(L.picker.querySelectorAll('.key')), i=keys.indexOf(k);
+  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); k.dispatchEvent(new MouseEvent('click',{bubbles:true})); }
+  else if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); keys[(i+1)%12].focus(); }
+  else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); keys[(i+11)%12].focus(); }
+});
+document.addEventListener('click',function(e){
+  if(state.open && !L.picker.contains(e.target)) setOpen(false);
+});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape' && state.open){ setOpen(false); L.center.focus(); }
+});
+
+document.querySelectorAll('[data-lang]').forEach(function(b){
+  b.addEventListener('click',function(){
+    if(state.lang===b.dataset.lang) return;
+    state.lang=b.dataset.lang; drawDynamic();
+  });
+});
+document.querySelectorAll('[data-show]').forEach(function(b){
+  b.addEventListener('click',function(){
+    var k=b.dataset.show, other=k==='notes'?'degrees':'notes';
+    if(state[k] && !state[other]) return; // хотя бы одна кнопка всегда включена
+    state[k]=!state[k]; drawDynamic();
+  });
+});
+document.querySelectorAll('[data-thm]').forEach(function(b){
+  b.addEventListener('click',function(){
+    if(state.theme===b.dataset.thm) return;
+    state.theme=b.dataset.thm;
+    document.documentElement.setAttribute('data-theme',state.theme);
+    applyUI();
+  });
+});
+
+
+function start(){ drawStatic(); drawDynamic(); }
+if(document.fonts && document.fonts.ready){ document.fonts.ready.then(start); } else { start(); }
+})();
+</script>
+</body>
+</html>
