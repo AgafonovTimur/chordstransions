@@ -7,28 +7,28 @@
 <style>
 
 :root{
-  --ink:#231f20;
-  --paper:#ffffff;
-  --track:var(--ink);
+  --ink:#3a3128;
+  --paper:#f7f4ef;
+  --track:#ded7cd;
   --red:rgba(255,48,48,.855);
   --yellow:rgba(255,221,87,.855);
   --cyan:rgba(91,225,229,.855);
   --red-solid:#ff4e4e;
   --yellow-solid:#ffe26f;
   --cyan-solid:#73e5e9;
-  --tick:#8d8a8a;
-  --hover:#f1efef;
-  --picker-bg:rgba(255,255,255,.97);
+  --tick:#a89f95;
+  --hover:#ece6df;
+  --picker-bg:rgba(246,243,239,.97);
   --serif:'Label Serif', 'EB Garamond', Garamond, 'Times New Roman', serif;
   --slab:'Title Slab', 'Roboto Slab', Rockwell, Georgia, serif;
 }
 html[data-theme="dark"]{
-  --ink:#d0d0d0;
-  --paper:#1e1e1e;
-  --track:#2f2f2f;
-  --tick:#9a9797;
-  --hover:#2b2b2e;
-  --picker-bg:rgba(30,30,30,.97);
+  --ink:#c9c5c0;
+  --paper:#26262b;
+  --track:#35343a;
+  --tick:#6e6b70;
+  --hover:#313036;
+  --picker-bg:rgba(30,29,33,.97);
 }
 *{box-sizing:border-box}
 html,body{margin:0;height:100%}
@@ -41,10 +41,6 @@ body{
 }
 .stage{
   min-height:100%;
-  display:grid;
-  grid-template-columns:minmax(0,1fr) auto;
-  align-items:start;
-  gap:8px;
   padding:12px 20px 12px 12px;
 }
 .diagram{
@@ -62,12 +58,25 @@ body{
   -webkit-user-select:none;
 }
 .panel{
-  position:sticky;
-  top:12px;
+  /* Позиция панели (left/top) выставляется из JS — смотрите константы
+     PANEL_OFFSET_X / PANEL_OFFSET_Y в блоке скрипта внизу файла. */
+  position:fixed;
   display:flex;
   flex-direction:column;
   gap:14px;
-  padding-top:12px;
+  background:var(--paper);
+  padding:10px;
+  border-radius:12px;
+  z-index:5;
+  opacity:1;
+  pointer-events:auto;
+  transition:opacity .15s ease;
+  max-height:calc(100vh - 24px);
+  overflow-y:auto;
+}
+.panel.hidden{
+  opacity:0;
+  pointer-events:none;
 }
 .seg{
   display:flex;
@@ -100,25 +109,21 @@ body{
 .track-ticks{fill:none;stroke:var(--tick);stroke-width:5;stroke-dasharray:1 13;opacity:.75}
 .arrow{fill:none;stroke:var(--ink);stroke-width:1.25;stroke-linecap:round;stroke-linejoin:round}
 .lbl{font-family:var(--serif);font-size:16px;fill:var(--ink)}
-.node-text{font-family:var(--serif);font-weight:500;fill:#000;text-anchor:middle;dominant-baseline:central}
+.node-text{font-family:var(--serif);font-weight:500;fill:var(--ink);text-anchor:middle;dominant-baseline:central}
 .loop-title{font-family:var(--slab);font-weight:700;font-size:40px;text-anchor:middle}
 .loop-title .outer{fill:var(--ink);stroke:var(--ink);stroke-width:7;stroke-linejoin:round}
-.loop-title .inner{fill:var(--ink);stroke:var(--paper);stroke-width:1.6;stroke-linejoin:round}
+.loop-title .inner{stroke:var(--paper);stroke-width:1.6;stroke-linejoin:round}
 
-#center{cursor:pointer;outline:none}
-#center .halo{fill:none;stroke:var(--ink);stroke-width:1.5;stroke-dasharray:3 4;opacity:0;transition:opacity .15s}
-#center:hover .halo,#center:focus-visible .halo,#center.open .halo{opacity:.8}
+/* Надпись с названием текущего лада над центральной плашкой */
+.mode-indicator{font-family:var(--serif);font-size:13px;fill:var(--ink);opacity:.75;text-anchor:middle;pointer-events:none}
 
-#picker{opacity:0;pointer-events:none;transition:opacity .15s}
-#picker.open{opacity:1;pointer-events:auto}
-#picker .backdrop{fill:var(--picker-bg);stroke:var(--ink);stroke-width:1.5}
-.key{cursor:pointer;outline:none}
-.key circle{fill:var(--paper);stroke:var(--ink);stroke-width:1.5;transition:fill .12s}
-.key text{font-family:var(--serif);font-weight:500;font-size:19px;fill:var(--ink);text-anchor:middle;dominant-baseline:central;pointer-events:none}
-.key:hover circle{fill:var(--hover)}
-.key:focus-visible circle{stroke-width:3}
-.key.current circle{fill:var(--cyan-solid)}
-.key.current text{fill:#000}
+/* ---- Кнопки тональности и лада в панели настроек ---- */
+.group-label{font:600 13px/1.2 var(--serif);color:var(--ink);opacity:.65;margin:2px 0 -6px 2px}
+.seg.piano{display:grid;grid-template-columns:repeat(14,1fr);column-gap:4px;row-gap:8px}
+.seg.piano button{flex:none;min-width:0;width:auto;height:42px;padding:0;font-size:13px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.seg.piano button.black-key{font-size:10.5px}
+.seg.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.seg.grid3 button{flex:none;width:100%;text-align:center}
 
 @media (prefers-reduced-motion:reduce){
   *{transition:none!important}
@@ -140,8 +145,7 @@ body{
       <g id="layer-labels"></g>
       <g id="layer-titles"></g>
       <g id="layer-nodes"></g>
-      <g id="picker"></g>
-      <g id="center" role="button" tabindex="0"></g>
+      <g id="center"></g>
     </svg>
   </div>
   <aside class="panel">
@@ -154,9 +158,13 @@ body{
       <button type="button" data-show="degrees"></button>
     </div>
     <div class="seg" id="theme-seg">
-      <button type="button" data-thm="light"></button>
       <button type="button" data-thm="dark"></button>
+      <button type="button" data-thm="light"></button>
     </div>
+    <div class="group-label" id="keyGroupLabel"></div>
+    <div class="seg piano" id="key-seg"></div>
+    <div class="group-label" id="modeGroupLabel"></div>
+    <div class="seg grid3" id="mode-seg"></div>
   </aside>
 </main>
 
@@ -168,36 +176,89 @@ body{
 var UI = {
   ru:{ru:'Русский',en:'Английский',notes:'Ноты',degrees:'Ступени',
       light:'Светлая',dark:'Тёмная',
-      pick:'Выбрать тональность',title:'Переходы аккордов',
+      title:'Переходы аккордов',
       langGroup:'Язык',showGroup:'Что показывать',themeGroup:'Тема',
+      keyGroup:'Тональность',modeGroup:'Лад',
       map:'Схема переходов между аккордами тональности'},
   en:{ru:'Russian',en:'English',notes:'Notes',degrees:'Degrees',
       light:'Light',dark:'Dark',
-      pick:'Choose key',title:'Chord transitions',
+      title:'Chord transitions',
       langGroup:'Language',showGroup:'What to show',themeGroup:'Theme',
+      keyGroup:'Key',modeGroup:'Mode',
       map:'Map of transitions between the chords of a key'}
 };
+/* Названия кнопок языка — всегда на своём языке, независимо от выбранного интерфейса */
+var LANG_NATIVE = { ru:'Русский', en:'English' };
 
 /* ================== Теория ================== */
 var KEYS = ['C','Db','D','Eb','E','F','F#','G','Ab','A','Bb','B'];
 var LETTERS = 'CDEFGAB';
 var NAT = {C:0,D:2,E:4,F:5,G:7,A:9,B:11};
-var STEPS = [0,2,4,5,7,9,11];
-var QUAL  = ['','m','m','','','m','°'];
-var ROMAN = ['I','ii','iii','IV','V','vi','vii°'];
 
-function scaleOf(key){
+/* ---- Список ладов ----------------------------------------------------
+   Чтобы добавить свой лад — впишите новую строку по тому же образцу:
+   id — короткое имя без пробелов (используется в коде и в MOOD_OVERRIDE),
+   ru/en — название лада, которое видит пользователь,
+   steps — 7 чисел: расстояние в полутонах от тоники до каждой ступени
+           лада (0 = тоника). Ровно как в старой переменной STEPS,
+           только теперь для каждого лада своя. */
+var MODE_LIST = [
+  {id:'lydian',         ru:'Лидийский',            en:'Lydian',          steps:[0,2,4,6,7,9,11]},
+  {id:'major',          ru:'Мажор',                en:'Major',           steps:[0,2,4,5,7,9,11]},
+  {id:'mixolydian',     ru:'Миксолидийский',       en:'Mixolydian',      steps:[0,2,4,5,7,9,10]},
+  {id:'dorian',         ru:'Дорийский',            en:'Dorian',          steps:[0,2,3,5,7,9,10]},
+  {id:'natural_minor',  ru:'Минор',                en:'Minor',           steps:[0,2,3,5,7,8,10]},
+  {id:'phrygian',       ru:'Фригийский',           en:'Phrygian',        steps:[0,1,3,5,7,8,10]},
+  {id:'locrian',        ru:'Локрийский',           en:'Locrian',         steps:[0,1,3,5,6,8,10]},
+  {id:'harmonic_minor', ru:'Гармонический минор',  en:'Harmonic minor',  steps:[0,2,3,5,7,8,11]},
+  {id:'melodic_minor',  ru:'Мелодический минор',   en:'Melodic minor',   steps:[0,2,3,5,7,9,11]}
+];
+var MODE_BY_ID = {};
+MODE_LIST.forEach(function(m){ MODE_BY_ID[m.id]=m; });
+
+function currentMode(){ return MODE_BY_ID[state.mode]; }
+function currentSteps(){ return currentMode().steps; }
+
+/* scaleOf(key, steps) — ноты лада от заданной тоники.
+   steps теперь передаётся аргументом (раньше было зашито под мажор). */
+function scaleOf(key, steps){
   var L = key[0], a = key.slice(1);
   var acc = a==='#'?1 : a==='b'?-1 : 0;
   var root = (NAT[L]+acc+12)%12;
   var li = LETTERS.indexOf(L);
-  return STEPS.map(function(s,i){
+  return steps.map(function(s,i){
     var letter = LETTERS[(li+i)%7];
     var diff = (((root+s)%12 - NAT[letter])%12+12)%12;
     if(diff>6) diff -= 12;
     var sign = diff===1?'#':diff===2?'##':diff===-1?'b':diff===-2?'bb':'';
     return letter+sign;
   });
+}
+
+/* degreeQuality(steps, d) — определяет качество трезвучия на ступени d
+   (0..6) для лада с заданными полутоновыми расстояниями steps.
+   Раньше качество было прописано вручную только для мажора (QUAL),
+   теперь оно считается по интервалам, поэтому работает для любого лада
+   без ручных таблиц: '' — мажорное, 'm' — минорное, '°' — уменьшённое,
+   '+' — увеличенное. */
+function degreeQuality(steps, d){
+  var r = steps[d%7];
+  var third = ((steps[(d+2)%7]-r)+12)%12;
+  var fifth = ((steps[(d+4)%7]-r)+12)%12;
+  if(third===4 && fifth===7) return '';
+  if(third===3 && fifth===7) return 'm';
+  if(third===3 && fifth===6) return '\u00b0';
+  if(third===4 && fifth===8) return '+';
+  return ''; /* защитный вариант — для ладов из списка выше не срабатывает */
+}
+
+var ROMAN_BASE = ['I','II','III','IV','V','VI','VII'];
+function romanFor(d, q){
+  var base = ROMAN_BASE[d];
+  if(q==='m') return base.toLowerCase();
+  if(q==='\u00b0') return base.toLowerCase()+'\u00b0';
+  if(q==='+') return base+'+';
+  return base;
 }
 
 /* ================== Схема ==================
@@ -244,6 +305,101 @@ var LOOPS = [
       ru:['Омрачённый\nпокой','Колебание','Утрата,\nхрупкость','Спокойствие','Позитивная\nперемена','Тёмное\nразрешение','Дестаби-\nлизация']}
   }
 ];
+
+/* ================== Настроения для ЛАДА «Мажор» ==================
+   Уже прописаны выше, в LOOPS[...].fwd / LOOPS[...].rev — их и меняйте,
+   если нужно поправить настроение для мажора. Ничего не переносилось. */
+
+/* ================== Настроения для остальных ладов ==================
+   Настроения из «Мажор» подставляются в другой лад ТОЛЬКО там, где
+   аккорды (буква + качество, например «Am» или «B°») у этого лада на
+   тех же двух ступенях буквально совпадают с мажорными — то есть это
+   реально тот же самый переход между теми же аккордами, что и в
+   мажоре, просто повторяющийся в другом ладу. Если хотя бы один из
+   двух аккордов другой (другой знак или другое качество) — переход
+   считается новым, и вместо настроения показывается техническая
+   подпись-заготовка вида «C Dorian 3rd Dm->Fm» (тоника/лад/круг/ноты),
+   пока вы не впишете туда своё настроение вручную.
+
+   Список того, где совпадения найдены (посчитано один раз заранее,
+   ничего пересчитывать не нужно) — ниже, в MOOD_MATCHES. Чтобы
+   вписать своё настроение вместо технической подписи — правьте
+   MOOD_OVERRIDE, как раньше:
+
+     MOOD_OVERRIDE['id_лада'][номер_круга]['f' или 'r'][язык][номер_стрелки]
+
+   - id_лада — один из: lydian, mixolydian, dorian, natural_minor,
+               phrygian, locrian, harmonic_minor, melodic_minor
+   - номер_круга — 0 = Терции/3rds, 1 = Кварты/4ths, 2 = Секунды/2nds
+   - 'f' — стрелка идёт по кругу «вперёд» (снаружи), 'r' — «назад» (внутри)
+   - язык — 'ru' или 'en'
+   - номер_стрелки — 0..6, какая по счёту стрелка в круге считая от центра:
+
+       Круг 0 (Терции/3rds):   0: I->III  1: III->V   2: V->VII
+                                3: VII->II 4: II->IV   5: IV->VI  6: VI->I
+       Круг 1 (Кварты/4ths):   0: I->IV   1: IV->VII  2: VII->III
+                                3: III->VI 4: VI->II   5: II->V   6: V->I
+       Круг 2 (Секунды/2nds):  0: I->II   1: II->III  2: III->IV
+                                3: IV->V   4: V->VI    5: VI->VII 6: VII->I
+
+   Пример правки: MOOD_OVERRIDE.dorian[0].f.ru[0] = 'Моё настроение'; */
+var EXTRA_MODE_IDS = ['lydian','mixolydian','dorian','natural_minor',
+                       'phrygian','locrian','harmonic_minor','melodic_minor'];
+
+/* MOOD_MATCHES — на каких стрелках (по кругам) аккорды лада буквально
+   совпадают с мажорными (посчитано по формуле degreeQuality заранее).
+   Формат: { номер_круга: [номера стрелок с совпадением] }. */
+var MOOD_MATCHES = {
+  lydian:         {0:[0,1,6], 1:[3,6], 2:[4]},
+  mixolydian:     {0:[4,5,6], 1:[0,4], 2:[0]},
+  dorian:         {0:[4]},
+  natural_minor:  {},
+  phrygian:       {},
+  locrian:        {},
+  harmonic_minor: {0:[2]},
+  melodic_minor:  {0:[2,3,4], 1:[1,5], 2:[3]}
+};
+
+var MOOD_OVERRIDE = {};
+EXTRA_MODE_IDS.forEach(function(id){
+  MOOD_OVERRIDE[id] = [0,1,2].map(function(){
+    return {
+      f:{ru:['','','','','','',''], en:['','','','','','','']},
+      r:{ru:['','','','','','',''], en:['','','','','','','']}
+    };
+  });
+  var matches = MOOD_MATCHES[id] || {};
+  Object.keys(matches).forEach(function(liStr){
+    var li = +liStr, loop = LOOPS[li];
+    matches[liStr].forEach(function(k){
+      MOOD_OVERRIDE[id][li].f.ru[k] = loop.fwd.ru[k];
+      MOOD_OVERRIDE[id][li].f.en[k] = loop.fwd.en[k];
+      MOOD_OVERRIDE[id][li].r.ru[k] = loop.rev.ru[k];
+      MOOD_OVERRIDE[id][li].r.en[k] = loop.rev.en[k];
+    });
+  });
+});
+
+/* moodText — возвращает подпись для стрелки: для «Мажор» берёт готовый
+   текст из LOOPS, для остальных ладов — либо текст из MOOD_OVERRIDE
+   (если вписан), либо автоматическую строку. */
+function moodText(li, dirKey, k, lang){
+  var loop = LOOPS[li];
+  if(state.mode === 'major'){
+    return (dirKey==='f' ? loop.fwd : loop.rev)[lang][k];
+  }
+  var ov = MOOD_OVERRIDE[state.mode][li][dirKey][lang][k];
+  if(ov) return ov;
+  var steps = currentSteps();
+  var fromDeg = dirKey==='f' ? loop.deg[k]   : loop.deg[k+1];
+  var toDeg   = dirKey==='f' ? loop.deg[k+1] : loop.deg[k];
+  var sc = scaleOf(state.key, steps);
+  var qFrom = degreeQuality(steps, fromDeg);
+  var qTo   = degreeQuality(steps, toDeg);
+  var modeName = currentMode()[lang];
+  var loopName = loop.title[lang];
+  return state.key+' '+modeName+' '+loopName+' '+sc[fromDeg]+qFrom+'->'+sc[toDeg]+qTo;
+}
 
 /* Положение подписей: 'петля:f|r:участок' -> [x, y, по горизонтали, по вертикали]
    по горизонтали: l — левый край блока в точке x, r — правый край, c — центр;
@@ -304,8 +460,66 @@ var LBL_WIDE_RU = {
 var FRAC = {'0:0':0.68,'0:6':0.4,'1:0':0.62,'1:6':0.45,'2:0':0.5,'2:6':0.5};
 
 /* ================== Состояние ================== */
-var state = { key:'C', lang:'ru', notes:true, degrees:false, open:false, theme:'dark' };
+var SAVED = loadSettings();
+var state = {
+  key: (SAVED && SAVED.key) || 'C',
+  mode: (SAVED && SAVED.mode) || 'major',
+  lang: (SAVED && SAVED.lang) || 'ru',
+  notes: SAVED ? !!SAVED.notes : true,
+  degrees: SAVED ? !!SAVED.degrees : false,
+  theme: (SAVED && SAVED.theme) || 'dark'
+};
 document.documentElement.setAttribute('data-theme',state.theme);
+
+/* ================== Сохранение настроек ================== */
+var SETTINGS_KEY = 'chordTransitions.settings';
+function loadSettings(){
+  /* Сначала пробуем прочитать настройки из адреса страницы (после #) —
+     это работает всегда, даже если браузер запрещает localStorage
+     для файлов, открытых прямо с диска (file://). Если в адресе
+     ничего нет — пробуем localStorage как запасной вариант. */
+  try{
+    if(location.hash && location.hash.length>1){
+      return JSON.parse(decodeURIComponent(location.hash.slice(1)));
+    }
+  }catch(e){}
+  try{
+    var raw = localStorage.getItem(SETTINGS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  }catch(e){ return null; }
+}
+function saveSettings(){
+  var data = {
+    key:state.key, mode:state.mode, lang:state.lang,
+    notes:state.notes, degrees:state.degrees, theme:state.theme
+  };
+  try{
+    history.replaceState(null, '', '#'+encodeURIComponent(JSON.stringify(data)));
+  }catch(e){}
+  try{
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(data));
+  }catch(e){}
+}
+
+/* ---- Позиция панели настроек относительно центра схемы (в пикселях) ----
+   Панель привязана не к краю экрана, а к центральной точке схемы (C0).
+   Числа ниже — это расстояние в реальных экранных пикселях от центра
+   до левого верхнего угла панели: OFFSET_X — вправо (отрицательное — влево),
+   OFFSET_Y — вниз (отрицательное — вверх). При любом размере/масштабе
+   окна панель останется на этом же расстоянии от центра схемы. */
+var PANEL_OFFSET_X = 370;
+var PANEL_OFFSET_Y = -390;
+
+function updatePanelPosition(){
+  if(!svg.getScreenCTM) return;
+  var ctm = svg.getScreenCTM();
+  if(!ctm) return;
+  var pt = svg.createSVGPoint();
+  pt.x = C0[0]; pt.y = C0[1];
+  var s = pt.matrixTransform(ctm);
+  panelEl.style.left = Math.round(s.x + PANEL_OFFSET_X) + 'px';
+  panelEl.style.top  = Math.round(s.y + PANEL_OFFSET_Y) + 'px';
+}
 
 /* ================== Геометрия ================== */
 var NS = 'http://www.w3.org/2000/svg';
@@ -398,7 +612,6 @@ var L = {
   labels:document.getElementById('layer-labels'),
   titles:document.getElementById('layer-titles'),
   nodes:document.getElementById('layer-nodes'),
-  picker:document.getElementById('picker'),
   center:document.getElementById('center')
 };
 var GEO = LOOPS.map(buildLoop);
@@ -406,9 +619,6 @@ var GEO = LOOPS.map(buildLoop);
 function drawStatic(){
   GEO.forEach(function(g){
     el('path',{d:g.d,'class':'track-base'},L.tracks);
-  });
-  GEO.forEach(function(g){
-    el('path',{d:g.d,'class':'track-ticks'},L.tracks);
   });
   /* стрелки */
   GEO.forEach(function(g,li){
@@ -448,10 +658,12 @@ function placeLabel(text, key){
 }
 
 function chordText(deg){
-  var sc = scaleOf(state.key);
-  var name = sc[deg]+QUAL[deg];
-  if(state.notes && state.degrees) return ROMAN[deg]+' \u2013 '+name;
-  if(state.degrees) return ROMAN[deg];
+  var steps = currentSteps();
+  var sc = scaleOf(state.key, steps);
+  var q = degreeQuality(steps, deg);
+  var name = sc[deg]+q;
+  if(state.notes && state.degrees) return romanFor(deg,q)+' \u2013 '+name;
+  if(state.degrees) return romanFor(deg,q);
   return name;
 }
 
@@ -469,7 +681,7 @@ function pill(parent, cx, cy, text, fill, fontSize){
   return {g:g,w:W,h:h};
 }
 
-var COLORS = {red:'var(--red)',yellow:'var(--yellow)',cyan:'var(--cyan)'};
+var COLORS = {red:'var(--track)',yellow:'var(--track)',cyan:'var(--track)'};
 
 function nodeFont(){ return (state.notes && state.degrees) ? 20 : 31; }
 
@@ -497,7 +709,7 @@ function drawDynamic(){
   GEO.forEach(function(g,li){
     var loop=LOOPS[li];
     g.arrows.forEach(function(a,k){
-      var ft=loop.fwd[lang][k], rt=loop.rev[lang][k];
+      var ft=moodText(li,'f',k,lang), rt=moodText(li,'r',k,lang);
       if(ft) placeLabel(ft, li+':f:'+k);
       if(rt) placeLabel(rt, li+':r:'+k);
     });
@@ -520,7 +732,6 @@ function drawDynamic(){
 
   /* центр */
   drawCenter(fs);
-  drawPicker();
   applyUI();
 }
 
@@ -531,31 +742,56 @@ function drawCenter(fs){
   var w = probe.getComputedTextLength(); g.removeChild(probe);
   var W = Math.max(32, w+16), H = 57;
   function rr(wd,ht,fill){ el('rect',{x:f1(c[0]-wd/2),y:f1(c[1]-ht/2),width:f1(wd),height:f1(ht),rx:f1(Math.min(wd,ht)/2),fill:fill},g); }
-  rr(W+28,H+20,'rgba(255,255,255,0.001)');           // увеличенная зона нажатия
-  el('rect',{'class':'halo',x:f1(c[0]-(W+30)/2),y:f1(c[1]-(H+22)/2),width:f1(W+30),height:f1(H+22),rx:f1(Math.min(W+30,H+22)/2)},g);
-  rr(W+20,H+10,'var(--yellow)');
-  rr(W+10,H+6,'var(--red-solid)');
-  rr(W,H,'var(--cyan)');
+  rr(W,H,'var(--track)');
   var t=el('text',{x:c[0],y:c[1]+1,'class':'node-text','font-size':fs+6},g); t.textContent=txt;
-  var tt=el('title',{},g); tt.textContent=UI[state.lang].pick;
-  g.classList.toggle('open',state.open);
-  g.setAttribute('aria-label',UI[state.lang].pick+': '+state.key);
-  g.setAttribute('aria-expanded',state.open?'true':'false');
 }
 
-function drawPicker(){
-  var p=L.picker; p.textContent='';
-  var c=C0, R=84;
-  el('circle',{'class':'backdrop',cx:c[0],cy:c[1],r:R+27},p);
-  KEYS.forEach(function(k,i){
-    var ang = -Math.PI/2 + i*Math.PI*2/12;
-    var x=c[0]+R*Math.cos(ang), y=c[1]+R*Math.sin(ang);
-    var g=el('g',{'class':'key'+(k===state.key?' current':''),role:'button',tabindex:state.open?'0':'-1','data-key':k,'aria-label':k},p);
-    el('circle',{cx:f1(x),cy:f1(y),r:21},g);
-    var t=el('text',{x:f1(x),y:f1(y+1)},g); t.textContent=k;
+/* ---- Кнопки тональности и лада в панели настроек (заменяют
+   прежний круговой выбор нот и выпадающий список ладов по центру схемы) ---- */
+function buildKeyModeButtons(){
+  var KEY_LABELS = {Db:'C#/Db', Eb:'D#/Eb', 'F#':'F#/Gb', Ab:'G#/Ab', Bb:'A#/Bb'};
+  /* Раскладка как на пианино: чёрные клавиши — верхний ряд, сдвинуты
+     на стыки соседних белых; белые клавиши — нижний ряд, встык. */
+  var PIANO_COLS = [
+    {black:false, col:'1 / 3',  row:'2'},
+    {black:true,  col:'2 / 4',  row:'1'},
+    {black:false, col:'3 / 5',  row:'2'},
+    {black:true,  col:'4 / 6',  row:'1'},
+    {black:false, col:'5 / 7',  row:'2'},
+    {black:false, col:'7 / 9',  row:'2'},
+    {black:true,  col:'8 / 10', row:'1'},
+    {black:false, col:'9 / 11', row:'2'},
+    {black:true,  col:'10 / 12',row:'1'},
+    {black:false, col:'11 / 13',row:'2'},
+    {black:true,  col:'12 / 14',row:'1'},
+    {black:false, col:'13 / 15',row:'2'}
+  ];
+  var keySeg = document.getElementById('key-seg');
+  KEYS.forEach(function(k, i){
+    var info = PIANO_COLS[i];
+    var b = document.createElement('button');
+    b.type='button'; b.dataset.key=k; b.textContent=KEY_LABELS[k]||k;
+    b.style.gridColumn = info.col;
+    b.style.gridRow = info.row;
+    if(info.black) b.classList.add('black-key');
+    keySeg.appendChild(b);
   });
-  p.classList.toggle('open',state.open);
-  p.setAttribute('aria-hidden',state.open?'false':'true');
+  var modeSeg = document.getElementById('mode-seg');
+  MODE_LIST.forEach(function(m){
+    var b = document.createElement('button');
+    b.type='button'; b.dataset.mode=m.id;
+    modeSeg.appendChild(b);
+  });
+  keySeg.addEventListener('click', function(e){
+    var b=e.target.closest('button[data-key]'); if(!b) return;
+    if(state.key===b.dataset.key) return;
+    state.key=b.dataset.key; saveSettings(); drawDynamic();
+  });
+  modeSeg.addEventListener('click', function(e){
+    var b=e.target.closest('button[data-mode]'); if(!b) return;
+    if(state.mode===b.dataset.mode) return;
+    state.mode=b.dataset.mode; saveSettings(); drawDynamic();
+  });
 }
 
 function applyUI(){
@@ -567,7 +803,7 @@ function applyUI(){
   document.getElementById('show-seg').setAttribute('aria-label',u.showGroup);
   document.getElementById('theme-seg').setAttribute('aria-label',u.themeGroup);
   document.querySelectorAll('[data-lang]').forEach(function(b){
-    b.textContent=u[b.dataset.lang];
+    b.textContent=LANG_NATIVE[b.dataset.lang];
     b.setAttribute('aria-pressed',b.dataset.lang===state.lang?'true':'false');
   });
   document.querySelectorAll('[data-show]').forEach(function(b){
@@ -578,51 +814,34 @@ function applyUI(){
     b.textContent=u[b.dataset.thm];
     b.setAttribute('aria-pressed',b.dataset.thm===state.theme?'true':'false');
   });
+  document.getElementById('keyGroupLabel').textContent=u.keyGroup;
+  document.getElementById('modeGroupLabel').textContent=u.modeGroup;
+  document.getElementById('key-seg').setAttribute('aria-label',u.keyGroup);
+  document.getElementById('mode-seg').setAttribute('aria-label',u.modeGroup);
+  document.querySelectorAll('#key-seg [data-key]').forEach(function(b){
+    b.setAttribute('aria-pressed',b.dataset.key===state.key?'true':'false');
+  });
+  document.querySelectorAll('#mode-seg [data-mode]').forEach(function(b){
+    var m = MODE_BY_ID[b.dataset.mode];
+    b.textContent = m[state.lang];
+    b.setAttribute('aria-pressed',b.dataset.mode===state.mode?'true':'false');
+  });
 }
 
 /* ================== Управление ================== */
-function setOpen(v){
-  state.open=v;
-  L.center.textContent=''; drawCenter(nodeFont());
-  drawPicker();
-  if(v){ var cur=L.picker.querySelector('.current'); if(cur) cur.focus(); }
-}
-
-L.center.addEventListener('click',function(e){ e.stopPropagation(); setOpen(!state.open); });
-L.center.addEventListener('keydown',function(e){
-  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); setOpen(!state.open); }
-});
-L.picker.addEventListener('click',function(e){
-  var k=e.target.closest('.key'); if(!k) return;
-  e.stopPropagation();
-  state.key=k.getAttribute('data-key'); state.open=false;
-  drawDynamic(); L.center.focus();
-});
-L.picker.addEventListener('keydown',function(e){
-  var k=e.target.closest('.key'); if(!k) return;
-  var keys=[].slice.call(L.picker.querySelectorAll('.key')), i=keys.indexOf(k);
-  if(e.key==='Enter'||e.key===' '){ e.preventDefault(); k.dispatchEvent(new MouseEvent('click',{bubbles:true})); }
-  else if(e.key==='ArrowRight'||e.key==='ArrowDown'){ e.preventDefault(); keys[(i+1)%12].focus(); }
-  else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ e.preventDefault(); keys[(i+11)%12].focus(); }
-});
-document.addEventListener('click',function(e){
-  if(state.open && !L.picker.contains(e.target)) setOpen(false);
-});
-document.addEventListener('keydown',function(e){
-  if(e.key==='Escape' && state.open){ setOpen(false); L.center.focus(); }
-});
+buildKeyModeButtons();
 
 document.querySelectorAll('[data-lang]').forEach(function(b){
   b.addEventListener('click',function(){
     if(state.lang===b.dataset.lang) return;
-    state.lang=b.dataset.lang; drawDynamic();
+    state.lang=b.dataset.lang; saveSettings(); drawDynamic();
   });
 });
 document.querySelectorAll('[data-show]').forEach(function(b){
   b.addEventListener('click',function(){
     var k=b.dataset.show, other=k==='notes'?'degrees':'notes';
     if(state[k] && !state[other]) return; // хотя бы одна кнопка всегда включена
-    state[k]=!state[k]; drawDynamic();
+    state[k]=!state[k]; saveSettings(); drawDynamic();
   });
 });
 document.querySelectorAll('[data-thm]').forEach(function(b){
@@ -630,13 +849,34 @@ document.querySelectorAll('[data-thm]').forEach(function(b){
     if(state.theme===b.dataset.thm) return;
     state.theme=b.dataset.thm;
     document.documentElement.setAttribute('data-theme',state.theme);
+    saveSettings();
     applyUI();
   });
 });
 
 
-function start(){ drawStatic(); drawDynamic(); }
+/* ---- Показ / скрытие панели настроек ----
+   Переключается средней кнопкой мыши (колесо) и клавишей Y/Н. */
+var panelEl = document.querySelector('.panel');
+function togglePanel(){ panelEl.classList.toggle('hidden'); }
+document.addEventListener('auxclick', function(e){
+  if(e.button===1){ e.preventDefault(); togglePanel(); }
+});
+document.addEventListener('mousedown', function(e){
+  if(e.button===1){ e.preventDefault(); }
+});
+document.addEventListener('keydown', function(e){
+  if(e.code==='KeyY'){ togglePanel(); }
+});
+
+function start(){ drawStatic(); drawDynamic(); updatePanelPosition(); }
 if(document.fonts && document.fonts.ready){ document.fonts.ready.then(start); } else { start(); }
+
+window.addEventListener('resize', updatePanelPosition);
+window.addEventListener('orientationchange', updatePanelPosition);
+if(window.ResizeObserver){
+  new ResizeObserver(updatePanelPosition).observe(svg);
+}
 })();
 </script>
 </body>
