@@ -139,7 +139,7 @@ body{
 <body>
 <main class="stage">
   <div class="diagram">
-    <svg id="map" viewBox="-40 -6 1015 926" xmlns="http://www.w3.org/2000/svg" role="img">
+    <svg id="map" viewBox="-60 -6 1080 1040" xmlns="http://www.w3.org/2000/svg" role="img">
       <g id="layer-tracks"></g>
       <g id="layer-arrows"></g>
       <g id="layer-labels"></g>
@@ -266,12 +266,12 @@ function romanFor(d, q){
    pts: координаты узлов; way: промежуточные точки изгиба дорожки (после узла с этим номером).
    fwd: подписи для движения по петле «вперёд» (стрелка снаружи петли),
    rev: подписи для движения «назад» (стрелка внутри петли). */
-var C0 = [470,462];
+var C0 = [470,552];
 var LOOPS = [
-  { color:'red', title:{ru:'Терции',en:'3rds'}, titleAt:[300,44],
+  { color:'red', title:{ru:'Терции',en:'3rds'}, titleAt:[470,70],
     deg:[0,2,4,6,1,3,5,0],
-    pts:[C0,[379,343],[370,219],[404,101],[532,101],[564,220],[556,344],C0],
-    way:{0:[[418,440]],3:[[466,58]],6:[[522,440]]},
+    pts:[C0,[379,433],[370,309],[404,191],[532,191],[564,310],[556,434],C0],
+    way:{0:[[418,530]],3:[[466,148]],6:[[522,530]]},
     t0:[-1,-0.12], t1:[-1,0.12],
     fwd:{
       en:['Loneliness','Strength,\nHappy surprise','Thickening,\nAdded tension','Negative surprise','Help, sweetness,\nMagnificence','Hardship','Pure positive'],
@@ -280,10 +280,10 @@ var LOOPS = [
       en:['Soft\nreturn','Bad news,\nLeft hanging','Release','Uncertainty','Darkening','Redemption,\nSupport','Pure\nnegative'],
       ru:['Мягкое\nвозвращение','Плохие новости,\nнедосказанность','Разрядка','Сомнение','Помрачнение','Искупление,\nподдержка','Чистый\nнегатив']}
   },
-  { color:'yellow', title:{ru:'Кварты',en:'4ths'}, titleAt:[170,848],
+  { color:'yellow', title:{ru:'Кварты',en:'4ths'}, titleAt:[-200,820],
     deg:[0,3,6,2,5,1,4,0],
-    pts:[C0,[328,459],[220,525],[143,630],[183,737],[322,692],[410,607],C0],
-    way:{0:[[418,448]],3:[[132,690]],6:[[462,528]]},
+    pts:[C0,[293,549],[158,615],[61,720],[111,827],[285,782],[395,697],C0],
+    way:{0:[[405,538]],3:[[48,780]],6:[[460,618]]},
     t0:[-1,-0.12], t1:[0,-1],
     fwd:{
       en:['Exploration,\nWarmth','Drama,\nTension,\nAlarm','Despair,\nAnger','Sad resolution,\nAcceptance','Hope,\nOpening up','Happy\nclarification','Bright\nresolution'],
@@ -292,10 +292,10 @@ var LOOPS = [
       en:['Bright peace','Mystery,\nMagic','Unknown,\nComplexity','Gravitas,\nEpicness','Closedness,\nShyness','Setback','Optimism\nEnergy'],
       ru:['Светлый\nпокой','Тайна,\nволшебство','Неизвестность,\nсложность','Весомость,\nэпичность','Замкнутость,\nробость','Шаг назад','Оптимизм,\nэнергия']}
   },
-  { color:'cyan', title:{ru:'Секунды',en:'2nds'}, titleAt:[790,852],
+  { color:'cyan', title:{ru:'Секунды',en:'2nds'}, titleAt:[1170,820],
     deg:[0,1,2,3,4,5,6,0],
-    pts:[C0,[617,459],[727,528],[798,639],[746,737],[625,693],[523,610],C0],
-    way:{0:[[522,448]],3:[[805,688]],6:[[476,530]]},
+    pts:[C0,[654,549],[791,618],[880,729],[815,827],[664,783],[536,700],C0],
+    way:{0:[[535,538]],3:[[889,778]],6:[[478,620]]},
     t0:[1,-0.12], t1:[0,-1],
     fwd:{
       en:['Resignation','Heightened\ndramatic intensity','Overcoming,\nSolace','Heightened\njoy','Disappointment','Pain,\nconfusion',''],
@@ -406,55 +406,55 @@ function moodText(li, dirKey, k, lang){
    по вертикали:   t — верх блока в точке y, b — низ, m — середина.
    LBL_RU — отдельные положения для русского там, где длинный текст не помещается. */
 var LBL = {
-  '0:f:0':[363,376,'r','m'], '0:r:0':[425,371,'l','t'], /* C -> Em и C -> Am */
-  '0:f:1':[340,281,'r','m'], '0:r:1':[393,297,'l','m'],
-  '0:f:2':[350,144,'r','m'], '0:r:2':[405,184,'l','m'],
-  '0:f:3':[465,30,'c','b'],  '0:r:3':[463,102,'c','m'],
-  '0:f:4':[580,159,'l','m'], '0:r:4':[530,155,'r','m'],
-  '0:f:5':[597,289,'l','m'], '0:r:5':[550,257,'r','m'],
-  '0:f:6':[570,387,'l','m'], '0:r:6':[517,362,'r','m'],
+  '0:f:0':[363,466,'r','m'], '0:r:0':[425,461,'l','t'], /* C -> Em и C -> Am */
+  '0:f:1':[340,371,'r','m'], '0:r:1':[393,387,'l','m'],
+  '0:f:2':[350,234,'r','m'], '0:r:2':[405,274,'l','m'],
+  '0:f:3':[465,120,'c','b'],  '0:r:3':[463,192,'c','m'],
+  '0:f:4':[580,249,'l','m'], '0:r:4':[530,245,'r','m'],
+  '0:f:5':[597,379,'l','m'], '0:r:5':[550,347,'r','m'],
+  '0:f:6':[570,477,'l','m'], '0:r:6':[517,452,'r','m'],
 
-  '1:f:0':[370,419,'r','m'], '1:r:0':[392,475,'c','t'],
-  '1:f:1':[259,453,'r','m'], '1:r:1':[257,527,'l','m'],
-  '1:f:2':[163,555,'r','m'], '1:r:2':[197,603,'l','m'],
-  '1:f:3':[108,712,'r','m'], '1:r:3':[152,677,'l','m'],
-  '1:f:4':[262,757,'c','t'], '1:r:4':[258,697,'c','b'],
-  '1:f:5':[377,695,'l','m'], '1:r:5':[362,627,'r','m'],
-  '1:f:6':[468,587,'c','t'], '1:r:6':[433,533,'r','m'],
+  '1:f:0':[345,509,'r','m'], '1:r:0':[372,565,'c','t'],
+  '1:f:1':[206,543,'r','m'], '1:r:1':[204,617,'l','m'],
+  '1:f:2':[86,645,'r','m'], '1:r:2':[129,693,'l','m'],
+  '1:f:3':[18,802,'r','m'], '1:r:3':[72,767,'l','m'],
+  '1:f:4':[210,847,'c','t'], '1:r:4':[205,787,'c','b'],
+  '1:f:5':[354,785,'l','m'], '1:r:5':[335,717,'r','m'],
+  '1:f:6':[468,677,'c','t'], '1:r:6':[424,623,'r','m'],
 
-  '2:f:0':[578,431,'l','b'], '2:r:0':[550,475,'c','t'],
-  '2:f:1':[704,468,'l','m'], '2:r:1':[666,525,'r','m'],
-  '2:f:2':[790,585,'l','m'], '2:r:2':[740,594,'r','m'],
-  '2:f:3':[816,746,'l','m'], '2:r:3':[782,688,'r','m'],
-  '2:f:4':[642,756,'c','t'], '2:r:4':[706,668,'c','m'],
-  '2:f:5':[568,686,'r','m'], '2:r:5':[552,612,'l','m'],
-  '2:r:6':[507,537,'l','m']
+  '2:f:0':[605,521,'l','b'], '2:r:0':[570,565,'c','t'],
+  '2:f:1':[762,558,'l','m'], '2:r:1':[715,615,'r','m'],
+  '2:f:2':[870,675,'l','m'], '2:r:2':[808,684,'r','m'],
+  '2:f:3':[902,836,'l','m'], '2:r:3':[860,778,'r','m'],
+  '2:f:4':[685,846,'c','t'], '2:r:4':[765,758,'c','m'],
+  '2:f:5':[592,776,'r','m'], '2:r:5':[572,702,'l','m'],
+  '2:r:6':[516,627,'l','m']
 };
 var LBL_RU = {
-  '0:r:0':[425,377,'l','t'],
-  '1:r:0':[388,475,'c','t'],
-  '1:r:4':[265,687,'c','b'],
-  '1:f:6':[464,607,'c','t'],
-  '2:f:1':[712,466,'l','m'],
-  '2:r:0':[550,475,'c','t'],
-  '2:r:3':[797,694,'r','m'],
-  '2:r:4':[694,660,'c','m']
+  '0:r:0':[425,467,'l','t'],
+  '1:r:0':[368,565,'c','t'],
+  '1:r:4':[214,777,'c','b'],
+  '1:f:6':[462,697,'c','t'],
+  '2:f:1':[772,556,'l','m'],
+  '2:r:0':[570,565,'c','t'],
+  '2:r:3':[879,784,'r','m'],
+  '2:r:4':[750,750,'c','m']
 };
 /* В режиме «ступень – нота» узлы шире, часть подписей отодвигается */
 var LBL_WIDE = {
-  '0:r:2':[410,196,'l','m'],
-  '0:r:3':[466,129,'c','t'],
-  '0:r:4':[530,172,'r','m'],
-  '0:r:6':[514,362,'r','m'],
-  '1:r:0':[378,484,'c','t'],
-  '1:r:4':[250,668,'c','b'],
-  '1:f:6':[468,636,'c','t'],
-  '2:r:0':[570,484,'c','t'],
-  '2:r:4':[708,655,'c','m'],
-  '2:r:5':[576,612,'l','m']
+  '0:r:2':[410,286,'l','m'],
+  '0:r:3':[466,219,'c','t'],
+  '0:r:4':[530,262,'r','m'],
+  '0:r:6':[514,452,'r','m'],
+  '1:r:0':[355,574,'c','t'],
+  '1:r:4':[195,758,'c','b'],
+  '1:f:6':[468,726,'c','t'],
+  '2:r:0':[595,574,'c','t'],
+  '2:r:4':[768,745,'c','m'],
+  '2:r:5':[602,702,'l','m']
 };
 var LBL_WIDE_RU = {
-  '1:r:0':[388,475,'c','t']
+  '1:r:0':[368,565,'c','t']
 };
 /* Положение стрелок на участке между узлами (0 — у первого узла, 1 — у второго) */
 var FRAC = {'0:0':0.68,'0:6':0.4,'1:0':0.62,'1:6':0.45,'2:0':0.5,'2:6':0.5};
@@ -467,7 +467,8 @@ var state = {
   lang: (SAVED && SAVED.lang) || 'ru',
   notes: SAVED ? !!SAVED.notes : true,
   degrees: SAVED ? !!SAVED.degrees : false,
-  theme: (SAVED && SAVED.theme) || 'dark'
+  theme: (SAVED && SAVED.theme) || 'dark',
+  panelOpen: (SAVED && SAVED.panelOpen !== undefined) ? !!SAVED.panelOpen : true
 };
 document.documentElement.setAttribute('data-theme',state.theme);
 
@@ -491,7 +492,8 @@ function loadSettings(){
 function saveSettings(){
   var data = {
     key:state.key, mode:state.mode, lang:state.lang,
-    notes:state.notes, degrees:state.degrees, theme:state.theme
+    notes:state.notes, degrees:state.degrees, theme:state.theme,
+    panelOpen:state.panelOpen
   };
   try{
     history.replaceState(null, '', '#'+encodeURIComponent(JSON.stringify(data)));
@@ -670,7 +672,7 @@ function chordText(deg){
 function pill(parent, cx, cy, text, fill, fontSize){
   var g = el('g',{},parent);
   var r = el('rect',{},g);
-  var t = el('text',{x:cx,y:cy+1,'class':'node-text','font-size':fontSize},g);
+  var t = el('text',{x:cx,y:cy+1,'class':'node-text','font-size':fontSize,style:'fill:#000'},g);
   t.textContent = text;
   var w = t.getComputedTextLength ? t.getComputedTextLength() : text.length*fontSize*.5;
   var h = 46, W = Math.max(28, w+17);
@@ -681,7 +683,7 @@ function pill(parent, cx, cy, text, fill, fontSize){
   return {g:g,w:W,h:h};
 }
 
-var COLORS = {red:'var(--track)',yellow:'var(--track)',cyan:'var(--track)'};
+var COLORS = {red:'var(--red)',yellow:'var(--yellow)',cyan:'var(--cyan)'};
 
 function nodeFont(){ return (state.notes && state.degrees) ? 20 : 31; }
 
@@ -858,7 +860,12 @@ document.querySelectorAll('[data-thm]').forEach(function(b){
 /* ---- Показ / скрытие панели настроек ----
    Переключается средней кнопкой мыши (колесо) и клавишей Y/Н. */
 var panelEl = document.querySelector('.panel');
-function togglePanel(){ panelEl.classList.toggle('hidden'); }
+panelEl.classList.toggle('hidden', !state.panelOpen);
+function togglePanel(){
+  state.panelOpen = !state.panelOpen;
+  panelEl.classList.toggle('hidden', !state.panelOpen);
+  saveSettings();
+}
 document.addEventListener('auxclick', function(e){
   if(e.button===1){ e.preventDefault(); togglePanel(); }
 });
